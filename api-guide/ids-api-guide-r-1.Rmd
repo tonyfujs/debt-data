@@ -21,8 +21,6 @@ This is first part of a two-part series on accessing the International Debt Stat
 To start, make sure you have the following packages installed on your machine. To install an R package type install.packages("httr") into R. You can also visit each of the linked sites below for reference.
 
 - [wbstats](https://cran.r-project.org/web/packages/wbstats/vignettes/Using_the_wbstats_package.html): search and download WB API data
-- [httr](https://cran.r-project.org/web/packages/httr/index.html): Submitting HTTP requests
-- [jsonlite](https://cran.r-project.org/web/packages/jsonlite/index.html): Parsing json response
 - [tidyverse](https://cran.r-project.org/web/packages/tidyverse/index.html):  Data work
 
 
@@ -30,8 +28,6 @@ Then, open up your preferred mode of writing R. This could be in [R Studio](http
 
 ```{r}
 library(wbstats)
-library(httr)
-library(jsonlite)
 library(tidyverse)
 ```
 
@@ -48,16 +44,9 @@ The following GET request will get us ALL the topics from the World Bank Data AP
 
 ```{r}
 # Get all the topic names from the World Bank API
-topicRequest <- GET(url = "http://api.worldbank.org/v2/topic?format=json")
-topicResponse <- content(topicRequest, as = "text", encoding = "UTF-8")
-
-# Parse the JSON content and convert it to a data frame. 
-topicsJSON <- fromJSON(topicResponse, flatten = TRUE) %>%
-  data.frame()
-
-# Print the data frame and review the topic names and ids
-cols <- c("id","value")
-topicsJSON[,cols]
+topics <- wbtopics() %>%
+  select(topicID, topic)
+topics
 ```
 We can now see that "External Debt" topic has the ID "20"
 
@@ -69,16 +58,12 @@ There will likely be more External Debt indicators available than can fit on one
 
 ```{r}
 # make request to World Bank API
-indicatorRequest <- GET(url = "http://api.worldbank.org/v2/topic/20/indicator?per_page=250&format=json")
-indicatorResponse <- content(indicatorRequest, as = "text", encoding = "UTF-8")
+indicators <- wbstats:::wbget("http://api.worldbank.org/v2/topic/20/indicator?format=JSON") 
 
-# Parse the JSON content and convert it to a data frame. 
-indicatorsJSON <- fromJSON(indicatorResponse, flatten = TRUE) %>%
-  data.frame()
+indicators %>%
+  select(id, name) %>%
+  head(20) # returns only the first 20 rows
 
-# Print the data frame and review the indicator names and ids
-cols <- c("id","name")
-#indicatorsJSON[,cols] # to view all the indicator names, remove the # at the beginning of this line
 ```
 
 
@@ -88,11 +73,10 @@ The resulting list gives us all of the External Debt indicators and their codes.
 # use the indicator code to define x
 x <- "DT.DOD.DLXF.CD"
 
-
 # use the above indicator code to find associate "sourceNote" or definition
-y <- which(indicatorsJSON$id == x)
-print(indicatorsJSON$sourceNote[y])
-
+indicators %>%
+  filter(id == x) %>%
+  pull(sourceNote)
 ```
 
 By using the API queries above, we were able sort through the World Bank API topics, find External Debt, explore the available indicators, select one and find its corresponding indicator id, and then finally get the defintion of the indicator.
@@ -107,19 +91,15 @@ When pulling the list of locations, I will set the per_page result to 300, as th
 
 ```{r}
 # Make request to World Bank API
-locationRequest <- GET(url = "http://api.worldbank.org/v2/country?per_page=300&format=json")
-locationResponse <- content(locationRequest, as = "text", encoding = "UTF-8")
-
-# Parse the JSON content and convert it to a data frame. 
-locationsJSON <- fromJSON(locationResponse, flatten = TRUE) %>%
-  data.frame()
+locations <- wbcountries()
 ```
 
 In particular, we want the "id" and the corresponding "name." Because there are so many locations, the results are also saved as "location-codes.csv"(LINK NEEDED)
 ```{r}
 # Print the data frame and review the indicator names and ids
-cols <- c("id","name")
-#locationsJSON[,cols]  # to view all the indicator names, remove the # at the beginning of this line
+locations %>%
+  select(iso3c, country) %>%
+  head(20)
 ```
 
 From the resulting list, you can select the location ids for the countries or regions of interest.
